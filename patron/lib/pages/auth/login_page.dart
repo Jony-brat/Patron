@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:patron/main.dart';
-import 'package:patron/pages/org/org_main_screen.dart'; // Добавляем импорт
+import 'package:patron/services/database_service.dart';
+import 'package:patron/pages/org/org_main_screen.dart';
 import 'register_page.dart';
 import 'org_register_page.dart';
 
@@ -16,7 +17,8 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
-  bool _isOrganizationLogin = false; // Переключатель типа входа
+  bool _isOrganizationLogin = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -25,32 +27,85 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
-      if (_isOrganizationLogin) {
-        // Вход для организации
+      setState(() {
+        _isLoading = true;
+      });
+      
+      try {
+        if (_isOrganizationLogin) {
+          // Вход для организации
+          final org = await DatabaseService.instance.loginOrganization(
+            _emailController.text.trim(),
+            _passwordController.text,
+          );
+          
+          if (org != null) {
+            // Устанавливаем глобальные переменные
+            currentUserId = null;
+            currentOrgId = org['id'];
+            isOrganizationMode = true;
+            
+            print('✅ Организация вошла: ID=${currentOrgId}, Name=${org['name']}');
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Вход в организацию выполнен успешно!')),
+              );
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const OrgMainScreen()),
+                (route) => false,
+              );
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Неверный email или пароль, или организация не одобрена')),
+            );
+          }
+        } else {
+          // Вход для пользователя
+          final user = await DatabaseService.instance.loginUser(
+            _emailController.text.trim(),
+            _passwordController.text,
+          );
+          
+          if (user != null) {
+            // Устанавливаем глобальные переменные
+            currentUserId = user['id'];
+            currentOrgId = null;
+            isOrganizationMode = false;
+            
+            print('✅ Пользователь вошёл: ID=${currentUserId}, Name=${user['name']}');
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Вход выполнен успешно!')),
+              );
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const MainScreen()),
+                (route) => false,
+              );
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Неверный email или пароль')),
+            );
+          }
+        }
+      } catch (e) {
+        print('❌ Ошибка входа: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Вход для организации выполнен успешно!')),
+          SnackBar(content: Text('Ошибка: $e')),
         );
-        
-        // Переходим в интерфейс организации
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const OrgMainScreen()),
-          (route) => false,
-        );
-      } else {
-        // Вход для обычного пользователя
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Вход выполнен успешно!')),
-        );
-        
-        // Переходим в главное приложение
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
-          (route) => false,
-        );
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -73,7 +128,6 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               const SizedBox(height: 20),
               
-              // Иконка
               Icon(
                 _isOrganizationLogin ? Icons.business : Icons.account_circle,
                 size: 80,
@@ -114,7 +168,6 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(width: 6),
                               Text(
                                 'Пользователь',
-                                textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: !_isOrganizationLogin ? Colors.white : Colors.grey.shade700,
                                   fontWeight: FontWeight.bold,
@@ -150,7 +203,6 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(width: 6),
                               Text(
                                 'Организация',
-                                textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: _isOrganizationLogin ? Colors.white : Colors.grey.shade700,
                                   fontWeight: FontWeight.bold,
@@ -168,7 +220,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 30),
 
-              // Поле email/логин
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -192,7 +243,6 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 16),
 
-              // Поле пароля
               TextFormField(
                 controller: _passwordController,
                 obscureText: !_isPasswordVisible,
@@ -228,26 +278,26 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 20),
 
-              // Кнопка входа
-              ElevatedButton(
-                onPressed: _login,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  _isOrganizationLogin ? 'Войти как организация' : 'Войти',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: _login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        _isOrganizationLogin ? 'Войти как организация' : 'Войти',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
 
               const SizedBox(height: 12),
 
-              // Забыли пароль?
               TextButton(
                 onPressed: () {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -259,7 +309,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 20),
 
-              // Ссылка на регистрацию
               if (!_isOrganizationLogin) ...[
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -298,7 +347,6 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ] else ...[
-                // Для организаций - ссылка на регистрацию
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -311,7 +359,7 @@ class _LoginPageState extends State<LoginPage> {
                         );
                       },
                       child: const Text(
-                        'Зарегистрировать',
+                        'Зарегистрировать организацию',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ),

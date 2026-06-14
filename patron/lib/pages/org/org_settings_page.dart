@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:patron/main.dart';
+import 'package:patron/pages/auth/auth_page.dart';
 
 class OrgSettingsPage extends StatefulWidget {
   const OrgSettingsPage({super.key});
@@ -13,6 +15,40 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
   bool _showInSearch = true;
   String _selectedCurrency = 'RUB';
   String _selectedLanguage = 'Русский';
+
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Выход из аккаунта'),
+          content: const Text('Вы уверены, что хотите выйти?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Очищаем глобальные переменные
+                currentUserId = null;
+                currentOrgId = null;
+                isOrganizationMode = false;
+                
+                // Переходим на экран авторизации
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AuthPage()),
+                  (route) => false,
+                );
+              },
+              child: const Text('Выйти', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,6 +177,27 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             onTap: () {
               _showTermsDialog();
             },
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Кнопка выхода
+          const Divider(),
+          const SizedBox(height: 16),
+          
+          _buildSectionHeader('🚪 Аккаунт'),
+          Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text(
+                'Выйти из аккаунта',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+              subtitle: const Text('Завершить сеанс работы'),
+              trailing: const Icon(Icons.chevron_right, color: Colors.red),
+              onTap: _logout,
+            ),
           ),
           
           const SizedBox(height: 30),

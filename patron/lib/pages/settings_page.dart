@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:patron/main.dart';
+import 'package:patron/pages/auth/auth_page.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -16,6 +18,40 @@ class _SettingsPageState extends State<SettingsPage> {
   String _selectedLanguage = 'Русский';
   String _selectedFontSize = 'Средний';
   double _monthlyDonationAmount = 500;
+
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Выход из аккаунта'),
+          content: const Text('Вы уверены, что хотите выйти?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Очищаем глобальные переменные
+                currentUserId = null;
+                currentOrgId = null;
+                isOrganizationMode = false;
+                
+                // Переходим на экран авторизации
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AuthPage()),
+                  (route) => false,
+                );
+              },
+              child: const Text('Выйти', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +73,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           const SizedBox(height: 24),
+          
           _buildSectionHeader('💳 Платежи и профиль'),
           _buildSwitchTile(
             icon: Icons.payment,
@@ -59,6 +96,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           const SizedBox(height: 24),
+          
           _buildSectionHeader('🎨 Отображение'),
           _buildSwitchTile(
             icon: Icons.dark_mode,
@@ -90,6 +128,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           const SizedBox(height: 24),
+          
           _buildSectionHeader('🔒 Конфиденциальность'),
           _buildSwitchTile(
             icon: Icons.visibility_off,
@@ -111,6 +150,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           const SizedBox(height: 24),
+          
           _buildSectionHeader('🤝 Социальное'),
           _buildListTile(
             icon: Icons.share,
@@ -131,6 +171,7 @@ class _SettingsPageState extends State<SettingsPage> {
             },
           ),
           const SizedBox(height: 24),
+          
           _buildSectionHeader('ℹ️ О приложении'),
           _buildListTile(
             icon: Icons.info,
@@ -165,6 +206,28 @@ class _SettingsPageState extends State<SettingsPage> {
               _showClearCacheDialog();
             },
           ),
+          
+          const SizedBox(height: 24),
+          
+          // Кнопка выхода
+          const Divider(),
+          const SizedBox(height: 16),
+          
+          _buildSectionHeader('🚪 Аккаунт'),
+          Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: Colors.red),
+              title: const Text(
+                'Выйти из аккаунта',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+              subtitle: const Text('Завершить сеанс работы'),
+              trailing: const Icon(Icons.chevron_right, color: Colors.red),
+              onTap: _logout,
+            ),
+          ),
+          
           const SizedBox(height: 30),
         ],
       ),

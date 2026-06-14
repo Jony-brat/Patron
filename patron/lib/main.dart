@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:patron/services/storage_service.dart';
+import 'package:patron/services/database_service.dart';
 import 'pages/auth/auth_page.dart';
 import 'pages/home_page.dart';
 import 'pages/list_page.dart';
@@ -7,7 +9,14 @@ import 'pages/settings_page.dart';
 import 'pages/support_page.dart';
 import 'pages/org/org_main_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  print('🚀 Запуск приложения...');
+  
+  // Инициализируем хранилище
+  await StorageService.init();
+  
   runApp(const MyApp());
 }
 
@@ -27,6 +36,11 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
+// Глобальные переменные для текущего пользователя/организации
+int? currentUserId;
+int? currentOrgId;
+bool isOrganizationMode = false;
 
 // Глобальный ключ для доступа к MainScreenState
 final GlobalKey<MainScreenState> mainScreenKey = GlobalKey();

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:patron/main.dart';
+import 'package:patron/services/database_service.dart';
 
 class OrgTransfersPage extends StatefulWidget {
   const OrgTransfersPage({super.key});
@@ -9,67 +11,49 @@ class OrgTransfersPage extends StatefulWidget {
 
 class _OrgTransfersPageState extends State<OrgTransfersPage> {
   String _filterType = 'Все';
-  
-  // Список переводов
-  List<Map<String, dynamic>> _transfers = [
-    {
-      'id': '1',
-      'amount': 5000,
-      'date': '15.06.2024',
-      'time': '14:30',
-      'userName': 'Анна Смирнова',
-      'isAnonymous': false,
-      'comment': 'На добрые дела! Спасибо за вашу работу 🙏',
-      'avatar': 'А',
-      'color': Colors.blue,
-    },
-    {
-      'id': '2',
-      'amount': 1200,
-      'date': '14.06.2024',
-      'time': '09:15',
-      'userName': 'Анонимный пользователь',
-      'isAnonymous': true,
-      'comment': 'Пусть у детей будет счастливое детство',
-      'avatar': '?',
-      'color': Colors.grey,
-    },
-    {
-      'id': '3',
-      'amount': 30000,
-      'date': '13.06.2024',
-      'time': '18:45',
-      'userName': 'Михаил Петрович Иванов',
-      'isAnonymous': false,
-      'comment': 'Для ремонта игровой комнаты',
-      'avatar': 'М',
-      'color': Colors.green,
-    },
-    {
-      'id': '4',
-      'amount': 750,
-      'date': '12.06.2024',
-      'time': '11:20',
-      'userName': 'Анонимный пользователь',
-      'isAnonymous': true,
-      'comment': 'Добра вам!',
-      'avatar': '?',
-      'color': Colors.grey,
-    },
-    {
-      'id': '5',
-      'amount': 15000,
-      'date': '11.06.2024',
-      'time': '16:00',
-      'userName': 'Елена Александровна Васильева',
-      'isAnonymous': false,
-      'comment': 'Пожалуйста, купите детям игрушки',
-      'avatar': 'Е',
-      'color': Colors.orange,
-    },
-  ];
+  List<Map<String, dynamic>> _transfers = [];
+  bool _isLoading = true;
+  double _totalAmount = 0;
 
-  // Функция для обрезки длинных имен
+  @override
+  void initState() {
+    super.initState();
+    _loadTransfers();
+  }
+
+  Future<void> _loadTransfers() async {
+    if (currentOrgId == null) return;
+    
+    setState(() {
+      _isLoading = true;
+    });
+    
+    try {
+      _transfers = await DatabaseService.instance.getDonationsForOrganization(currentOrgId!);
+      _totalAmount = _transfers.fold(0, (sum, item) => sum + (item['amount'] as num).toDouble());
+    } catch (e) {
+      print('Ошибка: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredTransfers {
+    if (_filterType == 'Все') {
+      return _transfers;
+    } else if (_filterType == 'С комментариями') {
+      return _transfers.where((t) => t['comment'] != null && t['comment'].toString().isNotEmpty).toList();
+    } else if (_filterType == 'Анонимные') {
+      return _transfers.where((t) => t['is_anonymous'] == 1).toList();
+    } else {
+      return _transfers;
+    }
+  }
+
   String _truncateName(String name) {
     if (name.length > 25) {
       return name.substring(0, 22) + '...';
@@ -77,24 +61,12 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
     return name;
   }
 
-  List<Map<String, dynamic>> get _filteredTransfers {
-    if (_filterType == 'Все') {
-      return _transfers;
-    } else if (_filterType == 'С комментариями') {
-      return _transfers.where((t) => t['comment'].isNotEmpty).toList();
-    } else if (_filterType == 'Анонимные') {
-      return _transfers.where((t) => t['isAnonymous'] == true).toList();
-    } else {
-      return _transfers;
-    }
-  }
-
-  double get _totalAmount {
-    return _filteredTransfers.fold(0, (sum, item) => sum + (item['amount'] as int));
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Column(
       children: [
         // Статистика
@@ -113,8 +85,8 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildStatCard('${_transfers.length}', 'Всего переводов'),
-              _buildStatCard('${_totalAmount} ₽', 'Общая сумма'),
-              _buildStatCard('${_transfers.where((t) => t['isAnonymous'] == true).length}', 'Анонимных'),
+              _buildStatCard('${_totalAmount.round()} ₽', 'Общая сумма'),
+              _buildStatCard('${_transfers.where((t) => t['is_anonymous'] == 1).length}', 'Анонимных'),
             ],
           ),
         ),
@@ -204,11 +176,15 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
   }
 
   Widget _buildTransferCard(Map<String, dynamic> transfer) {
-    // Обрезаем длинное имя (если больше 25 символов)
-    String displayName = transfer['userName'];
-    if (!transfer['isAnonymous'] && displayName.length > 25) {
-      displayName = displayName.substring(0, 22) + '...';
+    final bool isAnonymous = transfer['is_anonymous'] == 1;
+    String displayName = isAnonymous ? 'Анонимный пользователь' : (transfer['user_name'] ?? 'Пользователь');
+    
+    if (!isAnonymous && displayName.length > 25) {
+      displayName = _truncateName(displayName);
     }
+    
+    String avatar = isAnonymous ? '?' : (displayName.isNotEmpty ? displayName[0].toUpperCase() : 'П');
+    Color avatarColor = isAnonymous ? Colors.grey : Colors.deepPurple.shade300;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -230,18 +206,15 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Аватар
               CircleAvatar(
                 radius: 20,
-                backgroundColor: transfer['color'],
+                backgroundColor: avatarColor,
                 child: Text(
-                  transfer['avatar'],
+                  avatar,
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
               const SizedBox(width: 12),
-              
-              // Информация о пользователе
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,7 +232,7 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
                             maxLines: 1,
                           ),
                         ),
-                        if (transfer['isAnonymous'])
+                        if (isAnonymous)
                           Container(
                             margin: const EdgeInsets.only(left: 6),
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -276,14 +249,12 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${transfer['date']} в ${transfer['time']}',
+                      transfer['created_at']?.toString().substring(0, 16).replaceAll('-', '.') ?? '',
                       style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                     ),
                   ],
                 ),
               ),
-              
-              // Сумма
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
@@ -291,7 +262,7 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '+ ${transfer['amount']} ₽',
+                  '+ ${transfer['amount']?.round()} ₽',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -301,9 +272,7 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
               ),
             ],
           ),
-          
-          // Комментарий (если есть)
-          if (transfer['comment'].isNotEmpty) ...[
+          if (transfer['comment'] != null && transfer['comment'].toString().isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(10),

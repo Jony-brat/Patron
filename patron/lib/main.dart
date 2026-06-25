@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:patron/services/storage_service.dart';
-import 'package:patron/services/database_service.dart';
-import 'pages/auth/auth_page.dart';
+import 'pages/auth/auth_page.dart'; 
 import 'pages/home_page.dart';
 import 'pages/list_page.dart';
 import 'pages/profile_page.dart';
@@ -9,14 +7,7 @@ import 'pages/settings_page.dart';
 import 'pages/support_page.dart';
 import 'pages/org/org_main_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  print('🚀 Запуск приложения...');
-  
-  // Инициализируем хранилище
-  await StorageService.init();
-  
+void main() {
   runApp(const MyApp());
 }
 
@@ -31,13 +22,13 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const AuthPage(),
+      home: const AuthPage(),  // Теперь AuthPage найден
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-// Глобальные переменные для текущего пользователя/организации
+// Глобальные переменные
 int? currentUserId;
 int? currentOrgId;
 bool isOrganizationMode = false;

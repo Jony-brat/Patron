@@ -10,8 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Иконки Material Design
   cupertino_icons: ^1.0.6
-  shared_preferences: ^2.2.2  # Простое хранилище данных
 
 dev_dependencies:
   flutter_test:

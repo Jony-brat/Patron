@@ -22,22 +22,20 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
   }
 
   Future<void> _loadTransfers() async {
-    if (currentOrgId == null) return;
+    if (currentOrgId == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
     
-    setState(() {
-      _isLoading = true;
-    });
-    
+    setState(() => _isLoading = true);
     try {
       _transfers = await DatabaseService.instance.getDonationsForOrganization(currentOrgId!);
       _totalAmount = _transfers.fold(0, (sum, item) => sum + (item['amount'] as num).toDouble());
     } catch (e) {
-      print('Ошибка: $e');
+      print('Ошибка загрузки переводов: $e');
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -46,12 +44,13 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
     if (_filterType == 'Все') {
       return _transfers;
     } else if (_filterType == 'С комментариями') {
-      return _transfers.where((t) => t['comment'] != null && t['comment'].toString().isNotEmpty).toList();
+      return _transfers.where((t) => 
+        t['comment'] != null && t['comment'].toString().isNotEmpty
+      ).toList();
     } else if (_filterType == 'Анонимные') {
-      return _transfers.where((t) => t['is_anonymous'] == 1).toList();
-    } else {
-      return _transfers;
+      return _transfers.where((t) => t['is_anonymous'] == true).toList();
     }
+    return _transfers;
   }
 
   String _truncateName(String name) {
@@ -64,20 +63,28 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Загрузка переводов...'),
+          ],
+        ),
+      );
     }
 
     return Column(
       children: [
         // Статистика
         Container(
+          width: double.infinity,
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade700],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF6B2D8F), Color(0xFF9C27B0)],
             ),
             borderRadius: BorderRadius.circular(20),
           ),
@@ -86,7 +93,10 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
             children: [
               _buildStatCard('${_transfers.length}', 'Всего переводов'),
               _buildStatCard('${_totalAmount.round()} ₽', 'Общая сумма'),
-              _buildStatCard('${_transfers.where((t) => t['is_anonymous'] == 1).length}', 'Анонимных'),
+              _buildStatCard(
+                '${_transfers.where((t) => t['is_anonymous'] == true).length}', 
+                'Анонимных'
+              ),
             ],
           ),
         ),
@@ -96,7 +106,10 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              const Text('Фильтр:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              const Text(
+                'Фильтр:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: SegmentedButton<String>(
@@ -105,9 +118,18 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
                     selectedForegroundColor: Colors.white,
                   ),
                   segments: const [
-                    ButtonSegment(value: 'Все', label: Text('Все', style: TextStyle(fontSize: 12))),
-                    ButtonSegment(value: 'С комментариями', label: Text('С комм.', style: TextStyle(fontSize: 12))),
-                    ButtonSegment(value: 'Анонимные', label: Text('Анонимные', style: TextStyle(fontSize: 12))),
+                    ButtonSegment(
+                      value: 'Все', 
+                      label: Text('Все', style: TextStyle(fontSize: 12)),
+                    ),
+                    ButtonSegment(
+                      value: 'С комментариями', 
+                      label: Text('С комм.', style: TextStyle(fontSize: 12)),
+                    ),
+                    ButtonSegment(
+                      value: 'Анонимные', 
+                      label: Text('Анонимные', style: TextStyle(fontSize: 12)),
+                    ),
                   ],
                   selected: {_filterType},
                   onSelectionChanged: (Set<String> newSelection) {
@@ -130,21 +152,27 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.wallet, size: 64, color: Colors.grey.shade400),
+                      Icon(
+                        Icons.wallet, 
+                        size: 64, 
+                        color: Colors.grey.shade400,
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         'Переводов пока нет',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   itemCount: _filteredTransfers.length,
                   itemBuilder: (context, index) {
-                    final transfer = _filteredTransfers[index];
-                    return _buildTransferCard(transfer);
+                    return _buildTransferCard(_filteredTransfers[index]);
                   },
                 ),
         ),
@@ -154,6 +182,7 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
 
   Widget _buildStatCard(String value, String label) {
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           value,
@@ -162,6 +191,8 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
             fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
         const SizedBox(height: 4),
         Text(
@@ -170,23 +201,45 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
             fontSize: 11,
             color: Colors.white.withOpacity(0.8),
           ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
       ],
     );
   }
 
   Widget _buildTransferCard(Map<String, dynamic> transfer) {
-    final bool isAnonymous = transfer['is_anonymous'] == 1;
-    String displayName = isAnonymous ? 'Анонимный пользователь' : (transfer['user_name'] ?? 'Пользователь');
+    // Проверяем анонимность
+    final isAnonymous = transfer['is_anonymous'] == true;
     
+    // Формируем имя пользователя
+    String displayName = isAnonymous 
+        ? 'Анонимный пользователь' 
+        : (transfer['user_name'] ?? 'Пользователь');
+    
+    // Обрезаем длинные имена
     if (!isAnonymous && displayName.length > 25) {
       displayName = _truncateName(displayName);
     }
     
-    String avatar = isAnonymous ? '?' : (displayName.isNotEmpty ? displayName[0].toUpperCase() : 'П');
-    Color avatarColor = isAnonymous ? Colors.grey : Colors.deepPurple.shade300;
+    // Формируем аватар
+    String avatar = isAnonymous 
+        ? '?' 
+        : (displayName.isNotEmpty ? displayName[0].toUpperCase() : 'П');
     
+    // Цвет аватара
+    Color avatarColor = isAnonymous 
+        ? Colors.grey 
+        : Colors.deepPurple.shade300;
+    
+    // Форматируем дату
+    String date = transfer['created_at']?.toString() ?? '';
+    if (date.length > 16) {
+      date = date.substring(0, 16).replaceAll('-', '.');
+    }
+
     return Container(
+      width: double.infinity,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -206,15 +259,22 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Аватар
               CircleAvatar(
                 radius: 20,
                 backgroundColor: avatarColor,
                 child: Text(
                   avatar,
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
+              
+              // Информация о пользователе
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,37 +292,54 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
                             maxLines: 1,
                           ),
                         ),
-                        if (isAnonymous)
+                        if (isAnonymous) ...[
+                          const SizedBox(width: 6),
                           Container(
-                            margin: const EdgeInsets.only(left: 6),
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6, 
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.grey.shade200,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Text(
                               'Аноним',
-                              style: TextStyle(fontSize: 9, color: Colors.grey),
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.grey,
+                              ),
                             ),
                           ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      transfer['created_at']?.toString().substring(0, 16).replaceAll('-', '.') ?? '',
-                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                      date,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ],
                 ),
               ),
+              
+              // Сумма
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.green.shade50,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '+ ${transfer['amount']?.round()} ₽',
+                  '+ ${transfer['amount']?.round() ?? 0} ₽',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -272,9 +349,13 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
               ),
             ],
           ),
-          if (transfer['comment'] != null && transfer['comment'].toString().isNotEmpty) ...[
+          
+          // Комментарий (если есть)
+          if (transfer['comment'] != null && 
+              transfer['comment'].toString().isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
+              width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
@@ -283,12 +364,20 @@ class _OrgTransfersPageState extends State<OrgTransfersPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.format_quote, size: 14, color: Colors.grey),
+                  const Icon(
+                    Icons.format_quote,
+                    size: 14,
+                    color: Colors.grey,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       transfer['comment'],
-                      style: const TextStyle(fontSize: 12, color: Colors.grey, height: 1.3),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        height: 1.3,
+                      ),
                       softWrap: true,
                     ),
                   ),

@@ -14,11 +14,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Map<String, dynamic>? _userData;
   List<Map<String, dynamic>> _donations = [];
   bool _isLoading = true;
-  bool _isEditing = false;
-  String? _errorMessage;
-  
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
 
   @override
   void initState() {
@@ -26,166 +21,84 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadUserData();
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
-
   Future<void> _loadUserData() async {
-    print('📱 Загрузка профиля, currentUserId = $currentUserId');
-    
     if (currentUserId == null) {
-      print('❌ currentUserId = null, пользователь не авторизован');
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Пользователь не авторизован';
-      });
+      setState(() => _isLoading = false);
       return;
     }
-    
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    
+    setState(() => _isLoading = true);
     try {
-      // Загружаем данные пользователя
       _userData = await DatabaseService.instance.getUserById(currentUserId!);
-      print('📦 Данные пользователя: $_userData');
-      
-      if (_userData == null) {
-        setState(() {
-          _errorMessage = 'Пользователь не найден';
-        });
-      } else {
-        // Загружаем историю пожертвований
-        _donations = await DatabaseService.instance.getUserDonations(currentUserId!);
-        print('📦 История пожертвований: ${_donations.length} записей');
-        
-        _nameController.text = _userData!['name'] ?? '';
-        _phoneController.text = _userData!['phone'] ?? '';
-      }
+      _donations = await DatabaseService.instance.getUserDonations(currentUserId!);
     } catch (e) {
-      print('❌ Ошибка загрузки: $e');
-      setState(() {
-        _errorMessage = 'Ошибка загрузки данных: $e';
-      });
+      print('Ошибка: $e');
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _saveChanges() async {
-    if (currentUserId == null) return;
-    
-    setState(() {
-      _isLoading = true;
-    });
-    
-    try {
-      await DatabaseService.instance.updateUser(
-        currentUserId!,
-        name: _nameController.text,
-        phone: _phoneController.text,
-      );
-      
-      await _loadUserData();
-      
-      setState(() {
-        _isEditing = false;
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Данные обновлены!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Выход из аккаунта'),
+        content: const Text('Вы уверены, что хотите выйти?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+          TextButton(
+            onPressed: () {
+              currentUserId = null;
+              currentOrgId = null;
+              isOrganizationMode = false;
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const AuthPage()),
+                (route) => false,
+              );
+            },
+            child: const Text('Выйти', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Показываем индикатор загрузки
     if (_isLoading) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Загрузка профиля...'),
-          ],
+          children: [CircularProgressIndicator(), SizedBox(height: 16), Text('Загрузка профиля...')],
         ),
       );
     }
-    
-    // Показываем ошибку
-    if (_errorMessage != null) {
+
+    if (_userData == null) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: Colors.grey),
-              textAlign: TextAlign.center,
-            ),
+            const Text('Пользователь не найден'),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                // Возвращаемся на страницу авторизации
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AuthPage()),
-                  (route) => false,
-                );
-              },
-              child: const Text('Войти снова'),
-            ),
+            ElevatedButton(onPressed: _logout, child: const Text('Выйти')),
           ],
         ),
       );
     }
-    
-    if (_userData == null) {
-      return const Center(
-        child: Text('Нет данных пользователя'),
-      );
-    }
-    
+
     return SingleChildScrollView(
       child: Column(
         children: [
-          // Аватар и имя
+          // Шапка профиля
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade700],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(30),
-                bottomRight: Radius.circular(30),
-              ),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(colors: [Color(0xFF6B2D8F), Color(0xFF9C27B0)]),
+              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
             ),
             child: Column(
               children: [
@@ -194,51 +107,23 @@ class _ProfilePageState extends State<ProfilePage> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 20,
-                      ),
-                    ],
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20)],
                   ),
-                  child: const Icon(
-                    Icons.person,
-                    size: 60,
-                    color: Colors.deepPurple,
-                  ),
+                  child: const Icon(Icons.person, size: 60, color: Colors.deepPurple),
                 ),
                 const SizedBox(height: 16),
-                if (_isEditing)
-                  TextField(
-                    controller: _nameController,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                    decoration: const InputDecoration(
-                      hintText: 'Ваше имя',
-                      hintStyle: TextStyle(color: Colors.white70),
-                      border: InputBorder.none,
-                    ),
-                    textAlign: TextAlign.center,
-                  )
-                else
-                  Text(
-                    _userData!['name'] ?? 'Без имени',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
+                Text(
+                  _userData!['name'],
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
                 const SizedBox(height: 8),
                 Text(
-                  _userData!['email'] ?? 'email@example.com',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withOpacity(0.9),
-                  ),
+                  _userData!['email'],
+                  style: TextStyle(fontSize: 14, color: Colors.white.withOpacity(0.9)),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -255,15 +140,13 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             ),
           ),
-
+          
           const SizedBox(height: 24),
-
-          // Контактная информация
+          
+          // Контактная информация - фиксированная ширина
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -273,45 +156,40 @@ class _ProfilePageState extends State<ProfilePage> {
                       children: [
                         Icon(Icons.contact_phone, color: Colors.deepPurple),
                         SizedBox(width: 8),
-                        Text(
-                          'Контактная информация',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
+                        Text('Контактная информация', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     ListTile(
                       leading: const Icon(Icons.phone),
                       title: const Text('Телефон'),
-                      subtitle: _isEditing
-                          ? TextField(
-                              controller: _phoneController,
-                              decoration: const InputDecoration(
-                                hintText: 'Номер телефона',
-                                border: InputBorder.none,
-                              ),
-                            )
-                          : Text(_userData!['phone'] ?? 'Не указан'),
+                      subtitle: Text(
+                        _userData!['phone'] ?? 'Не указан',
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
                     ListTile(
                       leading: const Icon(Icons.calendar_today),
                       title: const Text('Дата регистрации'),
-                      subtitle: Text(_userData!['created_at']?.toString().substring(0, 10) ?? 'Неизвестно'),
+                      subtitle: Text(
+                        _userData!['created_at'] ?? 'Неизвестно',
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
           ),
-
+          
           const SizedBox(height: 16),
-
+          
           // История пожертвований
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -321,16 +199,13 @@ class _ProfilePageState extends State<ProfilePage> {
                       children: [
                         Icon(Icons.history, color: Colors.deepPurple),
                         SizedBox(width: 8),
-                        Text(
-                          'История пожертвований',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
+                        Text('История пожертвований', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     if (_donations.isEmpty)
                       const Padding(
-                        padding: EdgeInsets.all(32),
+                        padding: EdgeInsets.all(24),
                         child: Column(
                           children: [
                             Icon(Icons.favorite_border, size: 48, color: Colors.grey),
@@ -345,18 +220,19 @@ class _ProfilePageState extends State<ProfilePage> {
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: _donations.length,
                         itemBuilder: (context, index) {
-                          final donation = _donations[index];
+                          final d = _donations[index];
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundColor: Colors.green.shade100,
                               child: const Icon(Icons.favorite, size: 20, color: Colors.green),
                             ),
                             title: Text(
-                              donation['org_name'] ?? 'Организация',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              d['org_name'] ?? 'Организация',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                             subtitle: Text(
-                              donation['comment'] ?? 'Без комментария',
+                              d['comment'] ?? 'Без комментария',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -365,14 +241,11 @@ class _ProfilePageState extends State<ProfilePage> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  '+ ${donation['amount']?.round()} ₽',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green,
-                                  ),
+                                  '+ ${d['amount']} ₽',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
                                 ),
                                 Text(
-                                  donation['created_at']?.toString().substring(0, 10) ?? '',
+                                  d['created_at']?.toString().substring(0, 10) ?? '',
                                   style: const TextStyle(fontSize: 10, color: Colors.grey),
                                 ),
                               ],
@@ -385,31 +258,28 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ),
-
+          
           const SizedBox(height: 16),
-
-          // Кнопка редактирования/сохранения
+          
+          // Кнопка выхода
           Padding(
             padding: const EdgeInsets.all(16),
-            child: ElevatedButton.icon(
-              onPressed: _isEditing ? _saveChanges : () {
-                setState(() {
-                  _isEditing = true;
-                });
-              },
-              icon: Icon(_isEditing ? Icons.save : Icons.edit),
-              label: Text(_isEditing ? 'Сохранить' : 'Редактировать профиль'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepPurple,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _logout,
+                icon: const Icon(Icons.logout),
+                label: const Text('Выйти из аккаунта'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ),
           ),
-
+          
           const SizedBox(height: 20),
         ],
       ),

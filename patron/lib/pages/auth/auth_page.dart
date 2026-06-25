@@ -13,8 +13,6 @@ class AuthPage extends StatefulWidget {
 class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -30,13 +28,13 @@ class _AuthPageState extends State<AuthPage> {
         child: SafeArea(
           child: Column(
             children: [
+              // Верхняя часть с логотипом
               Expanded(
                 flex: 2,
-                child: SingleChildScrollView(
+                child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(height: screenHeight * 0.05),
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -52,7 +50,7 @@ class _AuthPageState extends State<AuthPage> {
                         ),
                         child: const Icon(
                           Icons.favorite,
-                          size: 50,
+                          size: 60,
                           color: Colors.deepPurple,
                         ),
                       ),
@@ -60,29 +58,26 @@ class _AuthPageState extends State<AuthPage> {
                       const Text(
                         'Patron',
                         style: TextStyle(
-                          fontSize: 36,
+                          fontSize: 42,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           letterSpacing: 2,
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          'Добро начинается с тебя',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white.withOpacity(0.9),
-                            fontStyle: FontStyle.italic,
-                          ),
-                          textAlign: TextAlign.center,
+                      Text(
+                        'Добро начинается с тебя',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.9),
+                          fontStyle: FontStyle.italic,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
+              // Нижняя часть с кнопками
               Expanded(
                 flex: 1,
                 child: Container(
@@ -94,7 +89,7 @@ class _AuthPageState extends State<AuthPage> {
                     ),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -110,7 +105,7 @@ class _AuthPageState extends State<AuthPage> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.deepPurple,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
@@ -118,11 +113,11 @@ class _AuthPageState extends State<AuthPage> {
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.login, size: 20),
+                                Icon(Icons.login),
                                 SizedBox(width: 10),
                                 Text(
                                   'Войти',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -141,7 +136,7 @@ class _AuthPageState extends State<AuthPage> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: Colors.deepPurple,
                               side: const BorderSide(color: Colors.deepPurple),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(15),
                               ),
@@ -149,11 +144,11 @@ class _AuthPageState extends State<AuthPage> {
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.person_add, size: 20),
+                                Icon(Icons.person_add),
                                 SizedBox(width: 10),
                                 Text(
                                   'Регистрация пользователя',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -169,7 +164,7 @@ class _AuthPageState extends State<AuthPage> {
                           },
                           child: const Text(
                             'Регистрация для организаций',
-                            style: TextStyle(fontSize: 13, color: Colors.deepPurple),
+                            style: TextStyle(fontSize: 14, color: Colors.deepPurple),
                           ),
                         ),
                       ],

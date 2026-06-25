@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:patron/main.dart';
+import 'package:patron/services/database_service.dart';
 import 'org_register_page.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -19,6 +20,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _agreeToTerms = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -30,21 +32,38 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  void _register() {
-    if (_formKey.currentState!.validate() && _agreeToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Регистрация прошла успешно!')),
-      );
-      
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
-        (route) => false,
-      );
-    } else if (!_agreeToTerms) {
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Примите условия пользовательского соглашения')),
       );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await DatabaseService.instance.registerUser(
+        name: _nameController.text,
+        email: _emailController.text.trim(),
+        phone: _phoneController.text,
+        password: _passwordController.text,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Регистрация прошла успешно!')),
+      );
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -65,11 +84,7 @@ class _RegisterPageState extends State<RegisterPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 8),
-              const Icon(
-                Icons.person_add,
-                size: 50,
-                color: Colors.deepPurple,
-              ),
+              const Icon(Icons.person_add, size: 50, color: Colors.deepPurple),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,
@@ -77,18 +92,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   labelText: 'ФИО',
                   labelStyle: const TextStyle(fontSize: 13),
                   prefixIcon: const Icon(Icons.person, size: 18),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 style: const TextStyle(fontSize: 13),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Введите ФИО';
-                  }
-                  return null;
-                },
+                validator: (value) => value == null || value.isEmpty ? 'Введите ФИО' : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
@@ -98,19 +106,13 @@ class _RegisterPageState extends State<RegisterPage> {
                   labelText: 'Email',
                   labelStyle: const TextStyle(fontSize: 13),
                   prefixIcon: const Icon(Icons.email, size: 18),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 style: const TextStyle(fontSize: 13),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Введите email';
-                  }
-                  if (!value.contains('@')) {
-                    return 'Некорректный email';
-                  }
+                  if (value == null || value.isEmpty) return 'Введите email';
+                  if (!value.contains('@')) return 'Некорректный email';
                   return null;
                 },
               ),
@@ -122,21 +124,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   labelText: 'Телефон',
                   labelStyle: const TextStyle(fontSize: 13),
                   prefixIcon: const Icon(Icons.phone, size: 18),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 style: const TextStyle(fontSize: 13),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Введите телефон';
-                  }
-                  if (value.length < 10) {
-                    return 'Некорректный телефон';
-                  }
-                  return null;
-                },
+                validator: (value) => value == null || value.length < 10 ? 'Введите корректный телефон' : null,
               ),
               const SizedBox(height: 10),
               TextFormField(
@@ -147,29 +139,16 @@ class _RegisterPageState extends State<RegisterPage> {
                   labelStyle: const TextStyle(fontSize: 13),
                   prefixIcon: const Icon(Icons.lock, size: 18),
                   suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                      size: 18,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
-                    },
+                    icon: Icon(_isPasswordVisible ? Icons.visibility : Icons.visibility_off, size: 18),
+                    onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 style: const TextStyle(fontSize: 13),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Введите пароль';
-                  }
-                  if (value.length < 6) {
-                    return 'Минимум 6 символов';
-                  }
+                  if (value == null || value.isEmpty) return 'Введите пароль';
+                  if (value.length < 6) return 'Минимум 6 символов';
                   return null;
                 },
               ),
@@ -182,29 +161,16 @@ class _RegisterPageState extends State<RegisterPage> {
                   labelStyle: const TextStyle(fontSize: 13),
                   prefixIcon: const Icon(Icons.lock_outline, size: 18),
                   suffixIcon: IconButton(
-                    icon: Icon(
-                      _isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                      size: 18,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                      });
-                    },
+                    icon: Icon(_isConfirmPasswordVisible ? Icons.visibility : Icons.visibility_off, size: 18),
+                    onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
                 style: const TextStyle(fontSize: 13),
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Подтвердите пароль';
-                  }
-                  if (value != _passwordController.text) {
-                    return 'Пароли не совпадают';
-                  }
+                  if (value == null || value.isEmpty) return 'Подтвердите пароль';
+                  if (value != _passwordController.text) return 'Пароли не совпадают';
                   return null;
                 },
               ),
@@ -217,11 +183,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     height: 32,
                     child: Checkbox(
                       value: _agreeToTerms,
-                      onChanged: (value) {
-                        setState(() {
-                          _agreeToTerms = value ?? false;
-                        });
-                      },
+                      onChanged: (value) => setState(() => _agreeToTerms = value ?? false),
                       activeColor: Colors.deepPurple,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -229,19 +191,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(width: 4),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _agreeToTerms = !_agreeToTerms;
-                        });
-                      },
+                      onTap: () => setState(() => _agreeToTerms = !_agreeToTerms),
                       child: const Padding(
                         padding: EdgeInsets.only(top: 6, right: 4),
                         child: Text(
                           'Я согласен с пользовательским соглашением и политикой конфиденциальности',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.black87,
-                          ),
+                          style: TextStyle(fontSize: 11, color: Colors.black87),
                           softWrap: true,
                         ),
                       ),
@@ -250,67 +205,39 @@ class _RegisterPageState extends State<RegisterPage> {
                 ],
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _register,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'Зарегистрироваться',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-              ),
+              _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ElevatedButton(
+                      onPressed: _register,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepPurple,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('Зарегистрироваться', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    ),
               const SizedBox(height: 12),
-              Column(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Уже есть аккаунт?', style: TextStyle(fontSize: 12)),
-                      const SizedBox(width: 4),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                        ),
-                        child: const Text(
-                          'Войти',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      ),
-                    ],
+                  const Text('Уже есть аккаунт?', style: TextStyle(fontSize: 12)),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Войти', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('Хотите зарегистрировать организацию?', style: TextStyle(fontSize: 12)),
-                      const SizedBox(width: 4),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const OrgRegisterPage()),
-                          );
-                        },
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          minimumSize: Size.zero,
-                        ),
-                        child: const Text(
-                          'Регистрация',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      ),
-                    ],
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Хотите зарегистрировать организацию?', style: TextStyle(fontSize: 12)),
+                  TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const OrgRegisterPage()),
+                    ),
+                    child: const Text('Регистрация', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
                 ],
               ),

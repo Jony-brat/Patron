@@ -1,1 +1,18 @@
 include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Отключаем некоторые строгие правила для упрощения
+    prefer_const_constructors: false
+    prefer_const_literals_to_create_immutables: false
+    avoid_print: false
+    use_key_in_widget_constructors: false
+    prefer_final_fields: false
+    unused_element: false
+    unused_field: false
+    unused_local_variable: false
+    avoid_function_literals_in_foreach_calls: false
+    prefer_typing_uninitialized_variables: false
+    unnecessary_new: true
+    unnecessary_parenthesis: true
+    curly_braces_in_flow_control_structures: false
